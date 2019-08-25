@@ -101,17 +101,25 @@ namespace AeroScenery.Download
                                     int waitTime = random.Next(minWait, maxWait);
                                     var waitTimeSpan = new TimeSpan(waitTime * TimeSpan.TicksPerMillisecond);
                                     await Task.Delay(waitTimeSpan);
+                                    
+                                    // Skip the file if it has already been downloaded and the downloaded file is not corrupted (valid image).
+                                    bool skipfile = false;
+                                    bool file_already_downloaded = System.IO.File.Exists(downloadDirectory + "\\" + imageTiles[j].FileName + "." + imageTiles[j].ImageExtension);
+                                    if (file_already_downloaded && IsValidImage(downloadDirectory + "\\" + imageTiles[j].FileName + "." + imageTiles[j].ImageExtension)) skipfile = true;
+                                    
+                                    if (skipfile == false)
+                                    {  
+                                        // We nee to re-eval this. If the user has cancelled, image tiles will be cleared
+                                        if (imageTiles != null && imageTiles.Count > 0)
+                                        {
+                                            await this.DownloadFile(httpClient, cookieContainer, imageTiles[j], downloadDirectory, orthophotoSource, orthophotoSourceInstance, waitTimeSpan);
+                                        }
 
-                                    // We nee to re-eval this. If the user has cancelled, image tiles will be cleared
-                                    if (imageTiles != null && imageTiles.Count > 0)
-                                    {
-                                        await this.DownloadFile(httpClient, cookieContainer, imageTiles[j], downloadDirectory, orthophotoSource, orthophotoSourceInstance, waitTimeSpan);
-                                    }
-
-                                    // We nee to re-eval this. If the user has cancelled, image tiles will be cleared
-                                    if (imageTiles != null && imageTiles.Count > 0)
-                                    {
-                                        this.SaveImageTileAeroFile(xmlSerializer, imageTiles[j], downloadDirectory);
+                                        // We nee to re-eval this. If the user has cancelled, image tiles will be cleared
+                                        if (imageTiles != null && imageTiles.Count > 0)
+                                        {
+                                            this.SaveImageTileAeroFile(xmlSerializer, imageTiles[j], downloadDirectory);
+                                        }
                                     }
 
                                     downloadThreadProgress.FilesDownloaded++;
@@ -173,6 +181,22 @@ namespace AeroScenery.Download
                 await Task.WhenAll(tasks);
                 log.InfoFormat("Finished download of {0} image tiles from {1}", imageTiles.Count, orthophotoSource.ToString());
 
+            }
+        }
+        
+        // Test if the image file is not corrupted (returns true, if the image file is valid  - Return false, if the image file is corrupted)
+        public bool IsValidImage(string filename)
+        {
+            try
+            {
+                using (var bmp = new System.Drawing.Bitmap(filename))
+                {
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
             }
         }
 
